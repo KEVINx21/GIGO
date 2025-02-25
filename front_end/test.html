@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GIGO AUTOMATION</title>
+  <style>
+    /* Basic Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: url('background.png') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    .container {
+      background-color: rgba(0, 0, 0, 0.75);
+      padding: 40px 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+      max-width: 700px;
+      width: 90%;
+    }
+    h1 {
+      font-size: 2.0em;
+      margin-bottom: 20px;
+      color: #FFD700;
+    }
+    /* Main Logo Styling */
+    .logo {
+      width: 70%;
+      max-width: 300px;
+      margin-bottom: 10px;
+    }
+    /* Small Logo Styling */
+    .small-logo {
+      width: 50%;
+      max-width: 100px;
+      margin-bottom: 20px;
+    }
+    .buttons {
+      margin: 20px 0;
+    }
+    button {
+      padding: 20px 30px;
+      font-size: 3.2em;
+      border: none;
+      background-color: #ffffff;
+      color: #000;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 10px;
+      transition: background-color 0.3s ease, transform 0.2s;
+    }
+    button:hover {
+      background-color: #FFC107;
+      transform: scale(1.05);
+    }
+    #recognizedText {
+      font-size: 1.5em;
+      margin-top: 20px;
+      font-weight: bold;
+      color: #FFD700;
+      min-height: 2em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="vecv_logo.png" alt="VECV Logo" class="logo">
+    <br>
+    <img src="स्वयं.png" alt="Small Logo" class="small-logo">
+    <h1>GIGO AUTOMATION</h1>
+    <div class="buttons">
+      <button id="voiceButton">🎙️</button>
+    </div>
+    <p id="recognizedText">Detected Number Plate: </p>
+  </div>
+  
+  <script>
+    const voiceButton = document.getElementById("voiceButton");
+    const recognizedTextEl = document.getElementById("recognizedText");
+
+    voiceButton.addEventListener("click", function() {
+      if (!("webkitSpeechRecognition" in window)) {
+        alert("Speech recognition is not supported in this browser. Please use Google Chrome.");
+        return;
+      }
+      
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = "en-IN";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      
+      recognizedTextEl.textContent = "Listening... Please speak.";
+      
+      recognition.onresult = function(event) {
+        let text = event.results[0][0].transcript;
+        let numberPlate = text.replace(/\s+/g, "").toUpperCase();
+        recognizedTextEl.textContent = "Detected Number Plate: " + numberPlate;
+        sendToGoogleSheets(numberPlate);
+      };
+      
+      recognition.onerror = function(event) {
+        recognizedTextEl.textContent = "Voice recognition error: " + event.error;
+      };
+      
+      recognition.start();
+    });
+    
+    function sendToGoogleSheets(numberPlate) {
+      // Replace with your actual Google Apps Script web app URL
+      fetch("https://script.google.com/macros/s/AKfycbzN7nPmh2EkDmzQrpRila-R2WS766FOQrNWegnJNhCu3Bq34dtCGfaH25RLMQrzswP2OQ/exec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recognizedText: numberPlate })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Google Sheets response:", data.message);
+      })
+      .catch(error => {
+        console.error("Error sending data to Google Sheets:", error);
+      });
+    }
+  </script>
+</body>
+</html>
