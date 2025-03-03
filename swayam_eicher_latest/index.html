@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GIGO AUTOMATION</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: url('background.png') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    .container {
+      background-color: rgba(0, 0, 0, 0.75);
+      padding: 40px 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+      max-width: 700px;
+      width: 90%;
+    }
+    h1 { font-size: 1.5em; margin-bottom: 10px; color: #FFD700; }
+    .logo { width: 40%; max-width: 100px; margin-bottom: 0px; border-radius: 10px }
+    .small-logo { width: 50%; max-width: 250px; margin-bottom: 0px; }
+    .buttons { margin: 20px 0; }
+    button {
+      padding: 20px 20px; font-size: 1.5em; border: none;
+      background-color: #ffffff; color: #000; border-radius: 50px;
+      cursor: pointer; transition: background-color 0.3s ease, transform 0.2s;
+    }
+    button:hover { background-color: #FFC107; transform: scale(1.05); }
+    #voiceButton { background-color: red; color: white; user-select: none; outline: none; }
+    #voiceButton.active { background-color: green; }
+    #recognizedText {
+      font-size: 1.5em; margin-top: 20px; font-weight: bold;
+      color: #FFD700; min-height: 2em;
+    }
+    .input-container {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    input {
+      font-size: 1.2em;
+      padding: 10px;
+      text-align: center;
+      text-transform: uppercase;
+      border-radius: 5px;
+      border: none;
+    }
+    #stateCode, #districtCode, #letters { width: 50px; }
+    #numbers { width: 90px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="EICHER.jpg" alt="VECV Logo" class="logo">
+    <br>
+    <img src="स्वयं1.png" alt="Small Logo" class="small-logo">
+    <h1>Press & Hold Mic</h1>
+    <div class="buttons">
+      <button id="voiceButton" tabindex="-1">🎙️</button> <!-- ✅ Prevents Selection -->
+    </div>
+    <p id="recognizedText">Number Plate:</p>
+
+    <!-- Editable Inputs for Number Plate -->
+    <div class="input-container">
+      <input type="text" id="stateCode" placeholder="MH" maxlength="2" pattern="[A-Z]*" required>
+      <input type="text" id="districtCode" placeholder="12" maxlength="2" pattern="[0-9]*" required>
+      <input type="text" id="letters" placeholder="AB" maxlength="2" pattern="[A-Z]*" required>
+      <input type="text" id="numbers" placeholder="1234" maxlength="4" pattern="[0-9]*" required>
+    </div>
+
+    <br>
+    <button id="submitButton" disabled>Submit ✅</button>
+  </div>
+  
+  <script>
+    const voiceButton = document.getElementById("voiceButton");
+    const submitButton = document.getElementById("submitButton");
+    const recognizedTextEl = document.getElementById("recognizedText");
+
+    const stateCode = document.getElementById("stateCode");
+    const districtCode = document.getElementById("districtCode");
+    const letters = document.getElementById("letters");
+    const numbers = document.getElementById("numbers");
+
+    let recognition;
+    let isListening = false;
+
+    function checkFields() {
+      if (stateCode.value.length === 2 && districtCode.value.length === 2 && 
+          letters.value.length === 2 && numbers.value.length === 4) {
+        submitButton.disabled = false;
+      } else {
+        submitButton.disabled = true;
+      }
+    }
+
+    [stateCode, districtCode, letters, numbers].forEach(input => {
+      input.addEventListener("input", checkFields);
+    });
+
+    async function requestMicPermission() {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true }); // Request Mic Permission Once
+        console.log("Mic permission granted");
+      } catch (error) {
+        console.error("Mic permission denied", error);
+      }
+    }
+
+    function startRecognition() {
+      if (!("webkitSpeechRecognition" in window)) {
+        alert("Speech recognition is not supported in this browser. Please use Google Chrome.");
+        return;
+      }
+
+      recognition = new webkitSpeechRecognition();
+      recognition.lang = "en-IN";
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      voiceButton.blur(); // ✅ Prevents Button Focus
+      recognizedTextEl.textContent = "Listening...";
+      voiceButton.classList.add("active");
+
+      recognition.onresult = function(event) {
+        let rawText = event.results[0][0].transcript.toUpperCase().replace(/\s+/g, "");
+        recognizedTextEl.textContent = "Number Plate: " + rawText;
+
+        if (rawText.length >= 2) stateCode.value = rawText.substring(0, 2);
+        if (rawText.length >= 4) districtCode.value = rawText.substring(2, 4);
+        if (rawText.length >= 6) letters.value = rawText.substring(4, 6);
+        if (rawText.length >= 10) numbers.value = rawText.substring(6, 10);
+
+        checkFields();
+      };
+
+      recognition.onerror = function(event) {
+        recognizedTextEl.textContent = "Voice recognition error: " + event.error;
+      };
+
+      recognition.start();
+    }
+
+    function stopRecognition() {
+      if (recognition) {
+        recognition.stop();
+        voiceButton.classList.remove("active");
+        recognizedTextEl.textContent = "Stopped Listening.";
+      }
+    }
+
+    // Push-to-Talk (Hold Button)
+    voiceButton.addEventListener("mousedown", startRecognition);
+    voiceButton.addEventListener("mouseup", stopRecognition);
+    voiceButton.addEventListener("mouseleave", stopRecognition);
+    voiceButton.addEventListener("touchstart", startRecognition);
+    voiceButton.addEventListener("touchend", stopRecognition);
+
+    submitButton.addEventListener("click", function() {
+      let finalNumberPlate = `${stateCode.value}${districtCode.value}${letters.value}${numbers.value}`;
+      sendToGoogleSheets(finalNumberPlate);
+      recognizedTextEl.textContent = "Number Plate Submitted: " + finalNumberPlate;
+      submitButton.disabled = true;
+    });
+
+    function sendToGoogleSheets(numberPlate) {
+      const formBody = "recognizedText=" + encodeURIComponent(numberPlate);
+
+      fetch("https://script.google.com/macros/s/AKfycbyntNEQTE8Sj6si2Ru6tM3jiVR7JD_WW_-OmaY-SlH5YXW4A1KJo6naeWxWm1r3pfg-/exec", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: formBody
+      })
+      .then(response => response.text()) 
+      .then(data => {
+        console.log("Google Sheets response:", data);
+      })
+      .catch(error => {
+        console.error("Error sending data to Google Sheets:", error);
+      });
+    }
+
+    // ✅ Request Mic Permission Once When Page Loads
+    window.onload = requestMicPermission;
+  </script>
+</body>
+</html>
