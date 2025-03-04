@@ -31,13 +31,11 @@
     .small-logo { width: 50%; max-width: 250px; margin-bottom: 0px; }
     .buttons { margin: 20px 0; }
     button {
-      padding: 20px 20px; font-size: 1.5em; border: none;
+      padding: 20px 25px; font-size: 1.5em; border: none;
       background-color: #ffffff; color: #000; border-radius: 50px;
-      cursor: pointer; transition: background-color 0.3s ease, transform 0.2s;
+      cursor: pointer; margin: 10px; transition: background-color 0.3s ease, transform 0.2s;
     }
     button:hover { background-color: #FFC107; transform: scale(1.05); }
-    #voiceButton { background-color: red; color: white; user-select: none; outline: none; }
-    #voiceButton.active { background-color: green; }
     #recognizedText {
       font-size: 1.5em; margin-top: 20px; font-weight: bold;
       color: #FFD700; min-height: 2em;
@@ -56,8 +54,12 @@
       border-radius: 5px;
       border: none;
     }
-    #stateCode, #districtCode, #letters { width: 50px; }
-    #numbers { width: 90px; }
+    #stateCode, #districtCode, #letters {
+      width: 50px;
+    }
+    #numbers {
+      width: 90px; /* Increased width for 4-digit numbers */
+    }
   </style>
 </head>
 <body>
@@ -65,11 +67,11 @@
     <img src="EICHER.jpg" alt="VECV Logo" class="logo">
     <br>
     <img src="स्वयं1.png" alt="Small Logo" class="small-logo">
-    <h1>Press & Hold Mic</h1>
+    <h1>Press to Speak</h1>
     <div class="buttons">
-      <button id="voiceButton" tabindex="-1">🎙️</button> <!-- ✅ Prevents Selection -->
+      <button id="voiceButton">🎙️</button>
     </div>
-    <p id="recognizedText">Number Plate:</p>
+    <p id="recognizedText">Number Plate: </p>
 
     <!-- Editable Inputs for Number Plate -->
     <div class="input-container">
@@ -93,8 +95,7 @@
     const letters = document.getElementById("letters");
     const numbers = document.getElementById("numbers");
 
-    let recognition;
-    let isListening = false;
+    let numberPlate = "";
 
     function checkFields() {
       if (stateCode.value.length === 2 && districtCode.value.length === 2 && 
@@ -109,40 +110,31 @@
       input.addEventListener("input", checkFields);
     });
 
-    async function requestMicPermission() {
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true }); // Request Mic Permission Once
-        console.log("Mic permission granted");
-      } catch (error) {
-        console.error("Mic permission denied", error);
-      }
-    }
-
-    function startRecognition() {
+    voiceButton.addEventListener("click", function() {
       if (!("webkitSpeechRecognition" in window)) {
         alert("Speech recognition is not supported in this browser. Please use Google Chrome.");
         return;
       }
 
-      recognition = new webkitSpeechRecognition();
-      recognition.lang = "en-IN";
-      recognition.continuous = true;
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = "en-IN"; // for Indian English recognition
+      recognition.continuous = false;
       recognition.interimResults = false;
 
-      voiceButton.blur(); // ✅ Prevents Button Focus
-      recognizedTextEl.textContent = "Listening...";
-      voiceButton.classList.add("active");
+      recognizedTextEl.textContent = "Listening... Please speak.";
+      submitButton.disabled = true; 
 
       recognition.onresult = function(event) {
         let rawText = event.results[0][0].transcript.toUpperCase().replace(/\s+/g, "");
         recognizedTextEl.textContent = "Number Plate: " + rawText;
 
+        // Retain previous values in editable fields & only replace detected parts
         if (rawText.length >= 2) stateCode.value = rawText.substring(0, 2);
         if (rawText.length >= 4) districtCode.value = rawText.substring(2, 4);
         if (rawText.length >= 6) letters.value = rawText.substring(4, 6);
         if (rawText.length >= 10) numbers.value = rawText.substring(6, 10);
 
-        checkFields();
+        checkFields(); 
       };
 
       recognition.onerror = function(event) {
@@ -150,22 +142,7 @@
       };
 
       recognition.start();
-    }
-
-    function stopRecognition() {
-      if (recognition) {
-        recognition.stop();
-        voiceButton.classList.remove("active");
-        recognizedTextEl.textContent = "Stopped Listening.";
-      }
-    }
-
-    // Push-to-Talk (Hold Button)
-    voiceButton.addEventListener("mousedown", startRecognition);
-    voiceButton.addEventListener("mouseup", stopRecognition);
-    voiceButton.addEventListener("mouseleave", stopRecognition);
-    voiceButton.addEventListener("touchstart", startRecognition);
-    voiceButton.addEventListener("touchend", stopRecognition);
+    });
 
     submitButton.addEventListener("click", function() {
       let finalNumberPlate = `${stateCode.value}${districtCode.value}${letters.value}${numbers.value}`;
@@ -192,9 +169,6 @@
         console.error("Error sending data to Google Sheets:", error);
       });
     }
-
-    // ✅ Request Mic Permission Once When Page Loads
-    window.onload = requestMicPermission;
   </script>
 </body>
 </html>
